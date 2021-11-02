@@ -1,0 +1,1 @@
+autogenerate file with all the cvars on cfg/sourcemod/franug_customweaponsmenu_dm.cfg
