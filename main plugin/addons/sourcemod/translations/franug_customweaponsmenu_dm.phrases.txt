@@ -78,4 +78,12 @@
 	{
 		"en"			"Your awp time has been expired"
 	}
+	"primary selected"
+	{
+		"en"			"Your primary weapon:"
+	}
+	"secondary selected"
+	{
+		"en"			"Your secondary weapon:"
+	}
 }

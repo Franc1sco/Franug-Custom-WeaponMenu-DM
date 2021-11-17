@@ -23,7 +23,7 @@
 #include <clientprefs>
 #include <autoexecconfig>
 
-#define VERSION "0.1"
+#define VERSION "0.2"
 
 #pragma newdecls required
 
@@ -45,8 +45,8 @@ bool g_bHasFlag[MAXPLAYERS + 1] = { false, ... };
 bool g_awpSelected[MAXPLAYERS + 1];
 
 // Menus
-Menu g_mOptionsMenu1 = null;
-Menu g_mOptionsMenu2 = null;
+//Menu g_mOptionsMenu1 = null;
+//Menu g_mOptionsMenu2 = null;
 Menu g_mOptionsMenu3[MAXPLAYERS + 1] = null;
 Menu g_mOptionsMenu4 = null;
 
@@ -73,10 +73,10 @@ Handle remember = INVALID_HANDLE;
 ConVar cv_popup;
 ConVar cv_awpSpots;
 ConVar cv_awpSpotsTimer;
-ConVar cv_defaultWeaponCT_primary;
+/*ConVar cv_defaultWeaponCT_primary;
 ConVar cv_defaultWeaponCT_secondary;
 ConVar cv_defaultWeaponT_primary;
-ConVar cv_defaultWeaponT_secondary;
+ConVar cv_defaultWeaponT_secondary;*/
 
 public Plugin myinfo = 
 {
@@ -94,8 +94,8 @@ public void OnPluginStart()
 	ListWeapons();
 	
 	// Create menus
-	g_mOptionsMenu1 = BuildOptionsMenu(true);
-	g_mOptionsMenu2 = BuildOptionsMenu(false);
+	//g_mOptionsMenu1 = BuildOptionsMenu(true);
+	//g_mOptionsMenu2 = BuildOptionsMenu(false);
 	g_mOptionsMenu4 = BuildOptionsMenuWeapons(false, 0);
 	
 	HookEvent("player_spawn", Event_PlayerSpawn);
@@ -114,10 +114,10 @@ public void OnPluginStart()
 	cv_awpSpots = AutoExecConfig_CreateConVar("sm_weaponsmenu_awpspots", "1", "Spots for awp to non vips");
 	cv_awpSpotsTimer = AutoExecConfig_CreateConVar("sm_weaponsmenu_awpspotstimer", "120.0", "Seconds to rotate awp");
 	g_cFlags = AutoExecConfig_CreateConVar("sm_weaponsmenu_vipflags", "a", "flag needed to be marked as VIP");
-	cv_defaultWeaponCT_primary = AutoExecConfig_CreateConVar("sm_weaponsmenu_defaultweaponct_primary", "weapon_m4a1", "Default primary weapon for CT");
+	/*cv_defaultWeaponCT_primary = AutoExecConfig_CreateConVar("sm_weaponsmenu_defaultweaponct_primary", "weapon_m4a1", "Default primary weapon for CT");
 	cv_defaultWeaponCT_secondary = AutoExecConfig_CreateConVar("sm_weaponsmenu_defaultweaponct_secondary", "weapon_hkp2000", "Default secondary weapon for CT");
 	cv_defaultWeaponT_primary = AutoExecConfig_CreateConVar("sm_weaponsmenu_defaultweapont_primary", "weapon_ak47", "Default primary weapon for T");
-	cv_defaultWeaponT_secondary = AutoExecConfig_CreateConVar("sm_weaponsmenu_defaultweapont_secondary", "weapon_glock", "Default secondary weapon for T");
+	cv_defaultWeaponT_secondary = AutoExecConfig_CreateConVar("sm_weaponsmenu_defaultweapont_secondary", "weapon_glock", "Default secondary weapon for T");*/
 	LoadTranslations("franug_customweaponsmenu_dm.phrases");
 	
 	AutoExecConfig_ExecuteFile();
@@ -125,7 +125,7 @@ public void OnPluginStart()
 	AutoExecConfig_CleanFile();
 	
 }
-
+/*
 Menu BuildOptionsMenu(bool sameWeaponsEnabled)
 {
 	int sameWeaponsStyle = (sameWeaponsEnabled) ? ITEMDRAW_DEFAULT : ITEMDRAW_DISABLED;
@@ -139,13 +139,14 @@ Menu BuildOptionsMenu(bool sameWeaponsEnabled)
 	menu3.AddItem("Random All", "Random weapons every round");
 	return menu3;
 }
+*/
 
 void DisplayOptionsMenu(int client)
 {
-	if (strcmp(g_sPrimaryWeapon[client], "") == 0 || strcmp(g_sSecondaryWeapon[client], "") == 0)
-		g_mOptionsMenu2.Display(client, MENU_TIME_FOREVER);
-	else
-		g_mOptionsMenu1.Display(client, MENU_TIME_FOREVER);
+	delete g_mOptionsMenu3[client];
+	g_mOptionsMenu3[client] = BuildOptionsMenuWeapons(true, client);
+			
+	g_mOptionsMenu3[client].Display(client, MENU_TIME_FOREVER);
 }
 
 Menu BuildOptionsMenuWeapons(bool primary, int client)
@@ -279,6 +280,16 @@ public int Menu_Primary(Menu menu, MenuAction action, int param1, int param2)
 		}
 		
 		g_sPrimaryWeapon[param1] = info;
+		int Items[Weapons];
+		for (int i = 0; i < g_aPrimary.Length; ++i)
+		{
+			g_aPrimary.GetArray(i, Items[0]);
+			if(StrEqual(Items[number], info))
+			{
+				PrintToChat(param1, "[\x04GUNS\x01] %t %s.", "primary selected", Items[desc]);
+				break;
+			}
+		}
 		g_mOptionsMenu4.Display(param1, MENU_TIME_FOREVER);
 		delete g_mOptionsMenu3[param1];
 	}
@@ -291,11 +302,17 @@ public int Menu_Secoundary(Menu menu, MenuAction action, int param1, int param2)
 		char info[24];
 		menu.GetItem(param2, info, sizeof(info));
 		g_sSecondaryWeapon[param1] = info;
+		int Items[Weapons];
+		for (int i = 0; i < g_aSecoundary.Length; ++i)
+		{
+			g_aSecoundary.GetArray(i, Items[0]);
+			if(StrEqual(Items[number], info))
+			{
+				PrintToChat(param1, "[\x04GUNS\x01] %t %s.", "secondary selected", Items[desc]);
+				break;
+			}
+		}
 		GiveSavedWeapons(param1);
-		if (!IsPlayerAlive(param1))
-			g_bNewWeaponsSelected[param1] = true;
-		if (g_bNewWeaponsSelected[param1])
-			PrintToChat(param1, "[\x04GUNS\x01] %t.", "New_weapons");
 	}
 }
 
@@ -325,41 +342,16 @@ public Action GiveWeapons(Handle timer, any client)
 	g_hTimer[client] = INVALID_HANDLE;
 	if (GetClientTeam(client) > 1 && IsPlayerAlive(client))
 	{
-		giveDefaultWeapons(client);
-		// Give weapons or display menu.
-		g_bWeaponsGivenThisRound[client] = false;
-		if (g_bNewWeaponsSelected[client])
-		{
-			//PrintToConsole(client, "camino 1");
+		if (strcmp(g_sPrimaryWeapon[client], "") != 0 && strcmp(g_sSecondaryWeapon[client], "") != 0)
 			GiveSavedWeapons(client);
-			g_bNewWeaponsSelected[client] = false;
-		}
-		else if (g_bRememberChoice[client])
+			
+		switch(cv_popup.IntValue)
 		{
-			//PrintToConsole(client, "camino 2");
-			GiveSavedWeapons(client);
-		}
-		else
-		{
-			//PrintToConsole(client, "camino 3");
-			if(g_awpSelected[client] && g_awpChance[client])
-			{
-				int weaponindex = GetPlayerWeaponSlot(client, CS_SLOT_PRIMARY);
-				if (weaponindex != -1)
+			case 2:DisplayOptionsMenu(client);
+			case 1:{
+				if (strcmp(g_sPrimaryWeapon[client], "") == 0 || strcmp(g_sSecondaryWeapon[client], "") == 0)
 				{
-					RemovePlayerItem(client, weaponindex);
-					AcceptEntityInput(weaponindex, "Kill");
-				}
-				GivePlayerItem(client, "weapon_awp");
-			}
-			switch(cv_popup.IntValue)
-			{
-				case 2:DisplayOptionsMenu(client);
-				case 1:{
-					if (strcmp(g_sPrimaryWeapon[client], "") == 0 || strcmp(g_sSecondaryWeapon[client], "") == 0)
-					{
-						DisplayOptionsMenu(client);
-					}
+					DisplayOptionsMenu(client);
 				}
 			}
 		}
@@ -403,7 +395,7 @@ void GiveSavedWeapons(int client)
 	//PrintToConsole(client, "armas dadas");
 	char weapons[128];
 	int weaponindex;
-	if (!g_bWeaponsGivenThisRound[client] && IsPlayerAlive(client))
+	if (IsPlayerAlive(client))
 	{
 		//StripAllWeapons(client);
 		weaponindex = GetPlayerWeaponSlot(client, CS_SLOT_PRIMARY);
@@ -489,7 +481,7 @@ void GiveSavedWeapons(int client)
 		g_bWeaponsGivenThisRound[client] = true;
 		
 		if (GetPlayerWeaponSlot(client, 2) == -1)GivePlayerItem(client, "weapon_knife");
-		FakeClientCommand(client, "use weapon_knife");
+		//FakeClientCommand(client, "use weapon_knife");
 		PrintToChat(client, "[\x04GUNS\x01] %t.", "Change_Weapons");
 		//PrintToChat(client, "Primary weapons is %s secondary weapons is %s y valor primary es %i",g_sPrimaryWeapon[client], g_sSecondaryWeapon[client], strcmp(g_sPrimaryWeapon[client], ""));
 	}
@@ -564,6 +556,26 @@ void ListWeapons()
 	
 	int Items[Weapons];
 	
+	Format(Items[number], 64, "weapon_ak47");
+	Format(Items[desc], 64, "AK-47");
+	g_aPrimary.PushArray(Items[0]);
+	
+	Format(Items[number], 64, "weapon_m4a1");
+	Format(Items[desc], 64, "M4A1");
+	g_aPrimary.PushArray(Items[0]);
+	
+	Format(Items[number], 64, "weapon_m4a1_silencer");
+	Format(Items[desc], 64, "M4A1-S");
+	g_aPrimary.PushArray(Items[0]);
+	
+	Format(Items[number], 64, "weapon_awp");
+	Format(Items[desc], 64, "AWP");
+	g_aPrimary.PushArray(Items[0]);
+	
+	Format(Items[number], 64, "weapon_ssg08");
+	Format(Items[desc], 64, "Scout");
+	g_aPrimary.PushArray(Items[0]);
+	
 	Format(Items[number], 64, "weapon_negev");
 	Format(Items[desc], 64, "Negev");
 	g_aPrimary.PushArray(Items[0]);
@@ -587,19 +599,7 @@ void ListWeapons()
 	Format(Items[number], 64, "weapon_g3sg1");
 	Format(Items[desc], 64, "G3SG1");
 	g_aPrimary.PushArray(Items[0]);
-	
-	Format(Items[number], 64, "weapon_m4a1");
-	Format(Items[desc], 64, "M4A1");
-	g_aPrimary.PushArray(Items[0]);
-	
-	Format(Items[number], 64, "weapon_m4a1_silencer");
-	Format(Items[desc], 64, "M4A1-S");
-	g_aPrimary.PushArray(Items[0]);
-	
-	Format(Items[number], 64, "weapon_ak47");
-	Format(Items[desc], 64, "AK-47");
-	g_aPrimary.PushArray(Items[0]);
-	
+
 	Format(Items[number], 64, "weapon_aug");
 	Format(Items[desc], 64, "AUG");
 	g_aPrimary.PushArray(Items[0]);
@@ -632,10 +632,6 @@ void ListWeapons()
 	Format(Items[desc], 64, "MAC-10");
 	g_aPrimary.PushArray(Items[0]);
 	
-	Format(Items[number], 64, "weapon_ssg08");
-	Format(Items[desc], 64, "SSG 08");
-	g_aPrimary.PushArray(Items[0]);
-	
 	Format(Items[number], 64, "weapon_nova");
 	Format(Items[desc], 64, "Nova");
 	g_aPrimary.PushArray(Items[0]);
@@ -650,10 +646,6 @@ void ListWeapons()
 	
 	Format(Items[number], 64, "weapon_mag7");
 	Format(Items[desc], 64, "MAG-7");
-	g_aPrimary.PushArray(Items[0]);
-	
-	Format(Items[number], 64, "weapon_awp");
-	Format(Items[desc], 64, "AWP");
 	g_aPrimary.PushArray(Items[0]);
 	
 	
@@ -707,7 +699,7 @@ bool GetCookie(int client)
 	
 	return StrEqual(buffer, "On");
 }
-
+/*
 void giveDefaultWeapons(int client)
 {
 	int weaponindex = GetPlayerWeaponSlot(client, CS_SLOT_SECONDARY);
@@ -740,7 +732,7 @@ void giveDefaultWeapons(int client)
 		
 	}
 }
-
+*/
 void setAwpSpots()
 {
 	//PrintToConsoleAll("camino awps");
